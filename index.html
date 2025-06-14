@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Vocabulary Search Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .search-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .search-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 150px 150px;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .filter-select {
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .lesson-col {
+            width: 80px;
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        .chinese-col {
+            width: 120px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .pinyin-col {
+            width: 120px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+
+        .english-col {
+            width: 150px;
+            color: #34495e;
+        }
+
+        .example-col {
+            min-width: 300px;
+            line-height: 1.6;
+        }
+
+        .example-english {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .example-chinese {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        .notes-col {
+            width: 200px;
+            color: #7f8c8d;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 50px 20px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                justify-content: center;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Chinese Vocabulary Search Tool</h1>
+            <p>Search through grammar points, vocabulary, and usage examples</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search vocabulary, pinyin, English, or examples...">
+                <select id="filterSelect" class="filter-select">
+                    <option value="all">All Columns</option>
+                    <option value="chinese">Chinese Only</option>
+                    <option value="pinyin">Pinyin Only</option>
+                    <option value="english">English Only</option>
+                    <option value="example">Examples Only</option>
+                    <option value="notes">Notes Only</option>
+                </select>
+                <button id="clearBtn" class="clear-btn">Clear</button>
+                <button id="refreshBtn" class="clear-btn" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">🔄 Refresh</button>
+            </div>
+            <div class="stats">
+                <div class="stat-item">Total Entries: <span id="totalCount">13</span></div>
+                <div class="stat-item">Showing: <span id="showingCount">13</span></div>
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 10px; font-size: 14px; line-height: 1.5;">
+                <strong>💡 Smart Search:</strong> When you search, you'll see direct matches (🎯) highlighted in green, plus related words (📖) from the same lessons for comparison. Results are grouped by lesson number to help you understand word differences and usage patterns.
+            </div>
+            <div style="margin-top: 10px; padding: 15px; background: #e8f5e8; border-radius: 10px; font-size: 13px; line-height: 1.5;">
+                <strong>✅ Connected to Google Sheets:</strong> This page is now connected to your vocabulary sheet! Add new words to your Google Sheet and click the 🔄 Refresh button to see them here. The page will automatically load your latest vocabulary when you visit it.
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="vocabularyTable">
+                <thead>
+                    <tr>
+                        <th class="lesson-col">Lesson</th>
+                        <th class="chinese-col">Chinese</th>
+                        <th class="pinyin-col">Pinyin</th>
+                        <th class="english-col">English</th>
+                        <th class="example-col">Usage/Example</th>
+                        <th class="notes-col">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be populated by JavaScript -->
+                </tbody>
+            </table>
+            <div id="noResults" class="no-results" style="display: none;">
+                No results found. Try a different search term.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your Google Sheet's published CSV URL
+        const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR_TvNuPYmHBJh4_zxXvA1qYTxWkNumHyr01pjwURBypPjKl7sp8oA0ZKF152g6drUO5IjJYbMMwtb4/pub?gid=0&single=true&output=csv';
+        
+        let vocabularyData = [];
+        let filteredData = [];
+
+        // Load data from Google Sheets
+        async function loadDataFromGoogleSheets() {
+            try {
+                showLoading(true);
+                const response = await fetch(GOOGLE_SHEET_URL);
+                const csvText = await response.text();
+                
+                // Parse CSV using Papa Parse
+                const parsed = Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    transformHeader: (header) => header.trim() // Clean headers
+                });
+                
+                // Transform the data to match our expected format
+                vocabularyData = parsed.data.map(row => ({
+                    lesson: row['Lesson'] || row['lesson'] || '',
+                    chinese: row['Chinese'] || row['chinese'] || '',
+                    pinyin: row['Pinyin'] || row['pinyin'] || '',
+                    english: row['English Expression'] || row['English'] || row['english'] || '',
+                    exampleEn: extractEnglishExample(row['Usage/Example'] || row['usage'] || row['example'] || ''),
+                    exampleCh: extractChineseExample(row['Usage/Example'] || row['usage'] || row['example'] || ''),
+                    notes: row['Notes'] || row['notes'] || ''
+                })).filter(item => item.chinese && item.english); // Filter out empty rows
+                
+                filteredData = [...vocabularyData];
+                renderTable(filteredData, '', []);
+                updateStats();
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Error loading data from Google Sheets:', error);
+                showError('Failed to load data from Google Sheets. Using sample data instead.');
+                loadSampleData();
+            }
+        }
+
+        // Extract English example from usage field
+        function extractEnglishExample(usageText) {
+            if (!usageText) return '';
+            // Look for text in quotes or before Chinese characters
+            const match = usageText.match(/"([^"]+)"/);
+            if (match) return match[1];
+            
+            // If no quotes, try to extract text before Chinese characters
+            const beforeChinese = usageText.split(/[\u4e00-\u9fff]/)[0];
+            return beforeChinese.replace(/["""'']/g, '').trim();
+        }
+
+        // Extract Chinese example from usage field
+        function extractChineseExample(usageText) {
+            if (!usageText) return '';
+            // Look for Chinese characters
+            const chineseMatch = usageText.match(/[\u4e00-\u9fff][^""]*/);
+            return chineseMatch ? chineseMatch[0].trim() : '';
+        }
+
+        // Load sample data as fallback
+        function loadSampleData() {
+            vocabularyData = [
+                {
+                    lesson: "3.20.1",
+                    chinese: "认识",
+                    pinyin: "rènshi",
+                    english: "meet / get to know",
+                    exampleEn: "I met her at the party",
+                    exampleCh: "我在聚会认识了她",
+                    notes: "First acquaintance"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "见面",
+                    pinyin: "jiàn miàn",
+                    english: "meet / meet up",
+                    exampleEn: "Let's meet at 5",
+                    exampleCh: "我们五点见面吧",
+                    notes: "Scheduled or arranged meeting"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "遇到/碰到",
+                    pinyin: "yù dào / pèng dào",
+                    english: "run into / bump into",
+                    exampleEn: "I ran into Tom downtown",
+                    exampleCh: "我在市中心遇到了汤姆",
+                    notes: "Unexpected encounter"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "看见/看到",
+                    pinyin: "kàn jiàn / kàn dào",
+                    english: "see / catch sight of",
+                    exampleEn: "I saw him across the room",
+                    exampleCh: "我看到房间对面坐着他",
+                    notes: "Literal seeing"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "看/见",
+                    pinyin: "kàn / jiàn",
+                    english: "see / visit / go see",
+                    exampleEn: "I'm going to see my grandma",
+                    exampleCh: "我要去看奶奶",
+                    notes: "Spending time with someone"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "约会",
+                    pinyin: "yuē huì",
+                    english: "see (someone) (romantic)",
+                    exampleEn: "Are you seeing anyone?",
+                    exampleCh: "你现在在和谁约会吗?",
+                    notes: "Romantic relationship"
+                },
+                {
+                    lesson: "3.20.1",
+                    chinese: "偶遇",
+                    pinyin: "ǒu yù",
+                    english: "come across / happen to see",
+                    exampleEn: "I came across my old teacher in the park",
+                    exampleCh: "我在公园偶遇了老老师",
+                    notes: "Slightly formal/literary"
+                },
+                {
+                    lesson: "4.3.1",
+                    chinese: "按照",
+                    pinyin: "àn zhào",
+                    english: "according to / in accordance with",
+                    exampleEn: "Please operate according to the manual",
+                    exampleCh: "请按照手册操作",
+                    notes: "Emphasizes following rules, instructions, or order"
+                },
+                {
+                    lesson: "4.3.1",
+                    chinese: "根据",
+                    pinyin: "gēn jù",
+                    english: "based on / according to",
+                    exampleEn: "Based on the data, we should change the strategy",
+                    exampleCh: "根据数据，我们应该改变方法",
+                    notes: "Focuses on making decisions from evidence"
+                },
+                {
+                    lesson: "4.3.1",
+                    chinese: "关于",
+                    pinyin: "guān yú",
+                    english: "about / regarding",
+                    exampleEn: "This book is about Chinese history",
+                    exampleCh: "这本书是关于中国历史的",
+                    notes: "Used to introduce a topic or theme"
+                },
+                {
+                    lesson: "4.5.1",
+                    chinese: "乘客",
+                    pinyin: "chéng kè",
+                    english: "passenger",
+                    exampleEn: "The passengers boarded the train",
+                    exampleCh: "乘客上了火车",
+                    notes: "Someone traveling by public transport"
+                },
+                {
+                    lesson: "4.5.1",
+                    chinese: "顾客",
+                    pinyin: "gù kè",
+                    english: "customer / client",
+                    exampleEn: "The customer is always right",
+                    exampleCh: "顾客总是对的",
+                    notes: "Someone buying goods or services"
+                },
+                {
+                    lesson: "4.5.1",
+                    chinese: "客人",
+                    pinyin: "kè rén",
+                    english: "guest / visitor",
+                    exampleEn: "We have guests coming over tonight",
+                    exampleCh: "今天晚上有客人来",
+                    notes: "Visitor to one's home or guest in hospitality"
+                }
+            ];
+            filteredData = [...vocabularyData];
+            renderTable(filteredData, '', []);
+            updateStats();
+            showLoading(false);
+        }
+
+        function showLoading(show) {
+            const container = document.querySelector('.container');
+            if (show) {
+                if (!document.getElementById('loadingOverlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'loadingOverlay';
+                    overlay.style.cssText = `
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(255,255,255,0.9); z-index: 1000;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 18px; color: #3498db;
+                    `;
+                    overlay.innerHTML = '🔄 Loading vocabulary from Google Sheets...';
+                    document.body.appendChild(overlay);
+                }
+            } else {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.remove();
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                background: #f8d7da; color: #721c24; padding: 15px;
+                border-radius: 8px; margin: 20px; border: 1px solid #f5c6cb;
+            `;
+            errorDiv.innerHTML = `⚠️ ${message}`;
+            document.querySelector('.search-section').appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function updateStats() {
+            document.getElementById('totalCount').textContent = vocabularyData.length;
+        }
+
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function renderTable(data, searchTerm = '', matchedItems = []) {
+            const tableBody = document.getElementById('tableBody');
+            const noResults = document.getElementById('noResults');
+            
+            if (data.length === 0) {
+                tableBody.innerHTML = '';
+                noResults.style.display = 'block';
+                document.querySelector('.table-container table').style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                document.querySelector('.table-container table').style.display = 'table';
+                
+                let currentLesson = '';
+                let html = '';
+                
+                data.forEach((item, index) => {
+                    // Add lesson group separator
+                    if (item.lesson !== currentLesson) {
+                        currentLesson = item.lesson;
+                        if (index > 0) {
+                            html += '<tr><td colspan="6" style="height: 10px; background: #f8f9fa; border: none;"></td></tr>';
+                        }
+                        html += `
+                            <tr style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
+                                <td colspan="6" style="padding: 15px; font-weight: 600; font-size: 16px; text-align: center;">
+                                    📚 Lesson ${item.lesson} - Related Vocabulary
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    // Check if this item directly matches the search
+                    const isDirectMatch = matchedItems.length === 0 || matchedItems.includes(item);
+                    const rowStyle = isDirectMatch ? 
+                        'background-color: #e8f5e8; border-left: 4px solid #27ae60;' : 
+                        'background-color: #f8f9fa; opacity: 0.8;';
+                    
+                    html += `
+                        <tr style="${rowStyle}">
+                            <td class="lesson-col">
+                                ${highlightText(item.lesson, searchTerm)}
+                                ${isDirectMatch ? ' 🎯' : ' 📖'}
+                            </td>
+                            <td class="chinese-col">${highlightText(item.chinese, searchTerm)}</td>
+                            <td class="pinyin-col">${highlightText(item.pinyin, searchTerm)}</td>
+                            <td class="english-col">${highlightText(item.english, searchTerm)}</td>
+                            <td class="example-col">
+                                <div class="example-english">"${highlightText(item.exampleEn, searchTerm)}"</div>
+                                <div class="example-chinese">${highlightText(item.exampleCh, searchTerm)}</div>
+                            </td>
+                            <td class="notes-col">${highlightText(item.notes, searchTerm)}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableBody.innerHTML = html;
+            }
+            
+            // Update stats to show direct matches vs total shown
+            const directMatches = matchedItems.length || data.length;
+            const totalShown = data.length;
+            document.getElementById('showingCount').textContent = 
+                searchTerm ? `${directMatches} matches, ${totalShown} total (with related)` : totalShown;
+        }
+
+        function searchAndFilter() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filterType = document.getElementById('filterSelect').value;
+            let matchedItems = [];
+            
+            if (!searchTerm) {
+                filteredData = [...vocabularyData];
+            } else {
+                // First, filter the data based on search criteria
+                matchedItems = vocabularyData.filter(item => {
+                    const searchFields = {
+                        all: [item.chinese, item.pinyin, item.english, item.exampleEn, item.exampleCh, item.notes, item.lesson],
+                        chinese: [item.chinese],
+                        pinyin: [item.pinyin],
+                        english: [item.english],
+                        example: [item.exampleEn, item.exampleCh],
+                        notes: [item.notes]
+                    };
+                    
+                    const fieldsToSearch = searchFields[filterType] || searchFields.all;
+                    return fieldsToSearch.some(field => 
+                        field.toLowerCase().includes(searchTerm)
+                    );
+                });
+
+                // Get all unique lessons from matched items
+                const matchedLessons = [...new Set(matchedItems.map(item => item.lesson))];
+                
+                // Include ALL items from lessons that have matches (for comparison)
+                filteredData = vocabularyData.filter(item => 
+                    matchedLessons.includes(item.lesson)
+                );
+                
+                // Sort by lesson number, then by whether item directly matches search
+                filteredData.sort((a, b) => {
+                    // First sort by lesson
+                    const lessonCompare = a.lesson.localeCompare(b.lesson, undefined, {numeric: true});
+                    if (lessonCompare !== 0) return lessonCompare;
+                    
+                    // Then prioritize direct matches within the same lesson
+                    const aMatches = matchedItems.includes(a);
+                    const bMatches = matchedItems.includes(b);
+                    if (aMatches && !bMatches) return -1;
+                    if (!aMatches && bMatches) return 1;
+                    
+                    return 0;
+                });
+            }
+            
+            renderTable(filteredData, searchTerm, matchedItems);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterSelect').value = 'all';
+            filteredData = [...vocabularyData];
+            renderTable(filteredData, '', []);
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', searchAndFilter);
+        document.getElementById('filterSelect').addEventListener('change', searchAndFilter);
+        document.getElementById('clearBtn').addEventListener('click', clearSearch);
+        document.getElementById('refreshBtn').addEventListener('click', loadDataFromGoogleSheets);
+
+        // Initialize - load from your Google Sheets
+        window.addEventListener('load', () => {
+            loadDataFromGoogleSheets();
+        });
+    </script>
+</body>
+</html>
